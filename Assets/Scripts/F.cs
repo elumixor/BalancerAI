@@ -127,7 +127,7 @@ public static class F {
         return string.Join("\n", mat.Rows(r => string.Join(", ", r.ToArray())));
     }
 
-    public static string Str(this float[] vec) {
+    public static string Str(this IReadOnlyCollection<float> vec) {
         return string.Join(", ", vec);
     }
 }

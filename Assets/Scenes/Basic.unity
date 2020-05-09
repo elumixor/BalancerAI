@@ -308,10 +308,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   agent: {fileID: 1330792338}
   visualizer: {fileID: 1235727720}
-  bigReward: 2
+  bigReward: 5
   smallReward: 1
+  stepReward: -0.1
   automatic: 1
   maxEpisodes: 1000
+  maxSamples: 10
 --- !u!4 &71361648
 Transform:
   m_ObjectHideFlags: 0

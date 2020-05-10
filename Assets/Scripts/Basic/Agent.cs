@@ -1,22 +1,31 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Num;
 using UnityEngine;
 using static F;
 
 namespace Basic {
     public class Agent : MonoBehaviour {
-        private float discount = 0.99f;
-        private float learningRate = 0.002f;
-        private float regularization = 0.1f;
+        private const float discount = 0.99f;
+        private const float learningRate = 0.01f;
+        private const float regularization = 0.01f;
+        private const float momentum = 0.9f;
+
         private float b;
         private float w;
+
+        private float db = 0f;
+        private float dw = 0f;
+
+        public object BrainString => $"{w} {b}";
 
         public float P0(State state) {
             return (w * state.position + b).Sigmoid();
         }
 
         public int SampleAction(State state) {
-            return new System.Random().NextDouble() < P0(state) ? 0 : 1;
+            var r = new System.Random();
+            return r.NextDouble() < P0(state) ? 0 : 1;
         }
 
         private float[] ToDiscounted(IReadOnlyList<float> rewards) {
@@ -29,35 +38,68 @@ namespace Basic {
             return discounted;
         }
 
-        private void Learn(State state, int action, float reward, int total) {
+        private (float db, float dw) Learn(float state, int action, float discounted) {
             // y = w*x + b
-            var dy = b.Sigmoid() * (1 - b.Sigmoid());
-            if (action == 1) dy = -dy;
+            var x = state;
+            var y = (w * x + b).Sigmoid();
+
+            var dy = (action == 0 ? 1 - y : -y) * discounted;
 
             var db = dy;
-            var dw = dy * state.position;
+            var dw = dy * x;
 
-            b += db * learningRate * reward / total;
-            w += dw * learningRate * reward / total;
+            return (db, dw);
         }
 
-        public void Learn(List<Sample> episodes) {
-            print(w + " " + b);
-            foreach (var episode in episodes) {
-                var (states, actions, rewards) = episode;
-                var r = ToDiscounted(rewards);
-                for (var i = 0; i < r.Length; i++) Learn(states[i], actions[i], r[i], rewards.Count);
 
-                // L2 regularization?
-                w -= 2 * w * learningRate * regularization;
+        public void Learn(List<Sample> episodes) {
+            var dbc = 0f;
+            var dwc = 0f;
+
+            var size = episodes.SelectMany(e => e.actions).Count();
+
+            var states = new float[size];
+            var actions = new int[size];
+            var rs = new float[size];
+
+            var off = 0;
+            foreach (var (s, a, r) in episodes) {
+                var discounted = ToDiscounted(r);
+                for (var i = 0; i < s.Count; i++) {
+                    states[off + i] = s[i].position;
+                    actions[off + i] = a[i];
+                    rs[off + i] = discounted[i];
+                }
+
+                off += s.Count;
             }
-            print(w + " " + b);
-            print("\n");
+
+            var rewards = ((Vector) rs).Normalize();
+
+            for (var i = 0; i < states.Length; i++) {
+                var x = states[i];
+                var a = actions[i];
+
+                var (dbi, dwi) = Learn(states[i], actions[i], rewards[i]);
+                dbc += dbi;
+                dwc += dwi;
+            }
+
+            dbc *= learningRate;
+            dwc *= learningRate;
+
+            db = momentum * db + (1 - momentum) * dbc;
+            dw = momentum * dw + (1 - momentum) * dwc;
+
+            b += db;
+            w += dw;
         }
 
         public void ResetBrain() {
             b = (float) (new System.Random().NextDouble() * 2f - 1f);
             w = (float) (new System.Random().NextDouble() * 2f - 1f);
+
+            db = dw = 0f;
         }
     }
 }

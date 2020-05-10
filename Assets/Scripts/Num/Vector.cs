@@ -73,13 +73,12 @@ namespace Num {
         }
 
         public static Vector operator *(float a, Vector x) => x * a;
+        public static Vector operator /(Vector x, float a) => x * (1f / a);
         public static Vector operator +(Vector x, float a) => a + x;
         public static Vector operator -(Vector a, Vector b) => a + -b;
         public static Vector operator -(Vector x, float a) => x + -a;
         public static Vector operator -(float a, Vector x) => -x + a;
 
-        
-        
         public float Dot(Vector b) {
             CheckSize(this, b);
             var s = 0f;
@@ -87,5 +86,22 @@ namespace Num {
 
             return s;
         }
+
+        public float Mean => elements.Average();
+
+        public float STD {
+            get {
+                var m = Mean;
+                var r = 0f;
+                foreach (var e in this) {
+                    var d = e - m;
+                    r += d * d;
+                }
+
+                return Mathf.Sqrt(r / (size - 1));
+            }
+        }
+
+        public Vector Normalize() => (this - Mean) / STD;
     }
 }

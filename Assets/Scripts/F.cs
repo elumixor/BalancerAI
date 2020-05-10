@@ -46,6 +46,14 @@ public static class F {
         return res;
     }
 
+    public static float mean(this float[] v) => v.Average();
+
+    public static float std(this float[] v) {
+        var m = v.mean();
+        var r = v.Select(t => t - m).Select(d => d * d).Sum();
+        return Mathf.Sqrt(r / (v.Length - 1));
+    }
+    
     public static float[] neg(this float[] x) {
         var res = new float[x.Length];
         for (var i = 0; i < x.Length; i++) {

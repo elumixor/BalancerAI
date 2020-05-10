@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -18,6 +19,11 @@ namespace Basic {
         [SerializeField] private bool automatic;
         [SerializeField] private int maxEpisodes;
         [SerializeField] private int maxSamples;
+        [SerializeField] private int episodesBatchSize;
+
+        [SerializeField] private TextMeshProUGUI scoreText;
+
+        [SerializeField, Range(0, 100)] private float timeScale;
 
         private int episodesTotal;
 
@@ -51,8 +57,6 @@ namespace Basic {
             var reward = terminalState ? x > 4.5f ? bigReward : smallReward : stepReward;
             rewards.Add(reward);
 
-            UpdateProbabilities();
-
             if (terminalState || rewards.Count >= maxSamples) {
                 rs.Add(rewards.Sum());
                 episode.Add(new Sample(states, actions, rewards));
@@ -76,13 +80,14 @@ namespace Basic {
 
             UpdateProbabilities();
 
-            if (episodesTotal % 10 == 9) {
+            if (episodesTotal % episodesBatchSize == episodesBatchSize - 1) {
                 agent.Learn(episode);
                 episode = new List<Sample>();
             }
 
             if (episodesTotal % 100 == 99) {
                 print($"Episode {episodesTotal}. Average reward: {rs.Average()}");
+                print(agent.BrainString);
                 rs = new List<float>();
             }
 
@@ -98,6 +103,7 @@ namespace Basic {
         public void ResetEnvironment() {
             episodesTotal = 0;
             agent.ResetBrain();
+            print(agent.BrainString);
             visualizer.SetValue(agent.P0(CurrentState));
             NewEpisode();
         }
@@ -108,11 +114,16 @@ namespace Basic {
             if (!automatic) {
                 if (Input.GetKey(KeyCode.A)) ApplyAction(0);
                 else if (Input.GetKey(KeyCode.D)) ApplyAction(1);
-                UpdateProbabilities();
-                return;
+            } else {
+                Step();
             }
 
-            Step();
+            UpdateProbabilities();
+            scoreText.text = rewards.Sum().ToString("#.##");
+        }
+
+        private void OnValidate() {
+            Time.timeScale = timeScale;
         }
     }
 }

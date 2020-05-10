@@ -4,7 +4,7 @@ using UnityEngine;
 namespace Basic {
     public class VisualizerBar : MonoBehaviour
     {
-        [SerializeField] private TMPro.TextMeshProUGUI text;
+        [SerializeField] private TextMeshProUGUI text;
         [SerializeField] private RectTransform bar;
 
         public void SetValue(float probability) {

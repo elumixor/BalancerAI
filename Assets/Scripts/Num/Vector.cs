@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using NN;
 using UnityEngine;
 
 namespace Num {
@@ -19,6 +20,7 @@ namespace Num {
         }
 
         public static implicit operator Vector(float[] elements) => new Vector(elements);
+
         public float this[int i] => elements[i];
         public IEnumerator<float> GetEnumerator() => ((IEnumerable<float>) elements).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -86,6 +88,15 @@ namespace Num {
 
             return s;
         }
+
+        public Matrix Outer(Vector b) {
+            var res = new float[size, b.size];
+            for (var i = 0; i < size; i++)
+            for (var j = 0; j < b.size; j++)
+                res[i, j] = elements[i] * b[j];
+            return res;
+        }
+
 
         public float Mean => elements.Average();
 

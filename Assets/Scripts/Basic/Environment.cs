@@ -8,7 +8,8 @@ using Random = UnityEngine.Random;
 namespace Basic {
     public class Environment : MonoBehaviour {
         [SerializeField] private Agent agent;
-        [SerializeField] private ProbabilityVisualizer visualizer;
+        [SerializeField] private ProbabilityVisualizer probabilityVisualizer;
+        [SerializeField] private VVisualizer valueVisualizer;
 
         [SerializeField] private float travelDistance;
 
@@ -64,9 +65,24 @@ namespace Basic {
             }
         }
 
-        private void UpdateProbabilities() {
+        private void UpdateStats() {
+            UpdateProbability();
+            UpdateValueStats();
+        }
+
+        private void UpdateProbability() {
             var p0 = agent.P0(CurrentState);
-            visualizer.SetValue(p0);
+            probabilityVisualizer.SetValue(p0);
+        }
+
+        private void UpdateValueStats() {
+            var bins = valueVisualizer.bins;
+            var step = 1f / bins;
+
+            for (var i = 0; i < bins; i++) {
+                var x = step * (.5f + i);
+                valueVisualizer.Set(x, agent.V(x));
+            }
         }
 
         private List<float> rs = new List<float>();
@@ -78,7 +94,7 @@ namespace Basic {
             actions = new List<int>();
             rewards = new List<float>();
 
-            UpdateProbabilities();
+            UpdateStats();
 
             if (episodesTotal % episodesBatchSize == episodesBatchSize - 1) {
                 agent.Learn(episode);
@@ -104,7 +120,7 @@ namespace Basic {
             episodesTotal = 0;
             agent.ResetBrain();
             print(agent.BrainString);
-            visualizer.SetValue(agent.P0(CurrentState));
+            probabilityVisualizer.SetValue(agent.P0(CurrentState));
             NewEpisode();
         }
 
@@ -118,7 +134,7 @@ namespace Basic {
                 Step();
             }
 
-            UpdateProbabilities();
+            UpdateStats();
             scoreText.text = rewards.Sum().ToString("#.##");
         }
 

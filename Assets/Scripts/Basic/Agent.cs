@@ -14,13 +14,20 @@ namespace Basic {
         private float b;
         private float w;
 
-        private float db = 0f;
-        private float dw = 0f;
+        private float db;
+        private float dw;
 
+        private float bv;
+        private float wv;
+        
         public object BrainString => $"{w} {b}";
 
         public float P0(State state) {
             return (w * state.position + b).Sigmoid();
+        }
+
+        public float V(float x) {
+            return wv * x + bv;
         }
 
         public int SampleAction(State state) {
@@ -51,7 +58,11 @@ namespace Basic {
             return (db, dw);
         }
 
-
+        private void LearnValueFunction(float state, int action, float G) {
+            var previous = V(state);
+            
+        }
+        
         public void Learn(List<Sample> episodes) {
             var dbc = 0f;
             var dwc = 0f;
@@ -83,6 +94,8 @@ namespace Basic {
                 var (dbi, dwi) = Learn(states[i], actions[i], rewards[i]);
                 dbc += dbi;
                 dwc += dwi;
+
+                LearnValueFunction(x, a, rewards[i]);
             }
 
             dbc *= learningRate;
@@ -98,6 +111,9 @@ namespace Basic {
         public void ResetBrain() {
             b = (float) (new System.Random().NextDouble() * 2f - 1f);
             w = (float) (new System.Random().NextDouble() * 2f - 1f);
+            
+            bv = (float) (new System.Random().NextDouble() * 2f - 1f);
+            wv = (float) (new System.Random().NextDouble() * 2f - 1f);
 
             db = dw = 0f;
         }

@@ -6,11 +6,11 @@ using UnityEngine;
 
 namespace Academy {
     public abstract class Agent : MonoBehaviour {
-        [SerializeField] private int decisionTime;
+        [SerializeField] private float reactionTime;
         [SerializeField] public bool useHeuristic;
         public event Action<Vector, Vector, float, bool> ActionTaken;
 
-        private int t;
+        private float lastReactionTime;
 
         private void FixedUpdate() {
             if (useHeuristic) {
@@ -18,20 +18,12 @@ namespace Academy {
                 return;
             }
 
-            if (t == decisionTime) {
-                t = 0;
-                PerformDecision();
-            } else {
-                t++;
-                // if (Time.fixedTime - lastReactionTime <= reactionTime) return;
-                // lastReactionTime += reactionTime;
-                PerformAction();
-            }
+            // if (Time.fixedTime - lastReactionTime <= reactionTime) return;
+            // lastReactionTime += reactionTime;
+            PerformStep();
         }
 
-        private void PerformAction() { }
-
-        private void PerformDecision() {
+        private void PerformStep() {
             var (obs, reward, isDone) = Observe();
             var action = GetAction(obs);
             ActionTaken?.Invoke(obs, action, reward, isDone);

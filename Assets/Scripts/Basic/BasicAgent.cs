@@ -191,7 +191,7 @@ namespace Basic {
 
             // Debug.Log("Received");
             net.FromBytes(response.Result, 0, out _);
-            Debug.Log(((Linear) net).w + " " + ((Linear) net).b);
+            // Debug.Log(((Linear) net).w + " " + ((Linear) net).b);
         }
     }
 }

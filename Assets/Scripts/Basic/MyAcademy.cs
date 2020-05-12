@@ -60,5 +60,9 @@ namespace Basic {
             Time.timeScale = timeScale;
             agent.useHeuristic = useHeuristic;
         }
+
+        public void Restart() {
+            
+        }
     }
 }

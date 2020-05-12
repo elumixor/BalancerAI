@@ -22,10 +22,10 @@ namespace Academy {
         private List<Episode> episodes;
         protected Episode currentEpisode;
 
-        private int epoch;
+        private int epoch = 1;
 
         public void Start() {
-            episodes = new List<Episode>();
+            episodes = new List<Episode>(episodesInBatch);
             currentEpisode = new Episode();
 
             agent.ActionTaken += OnActionTaken;
@@ -48,10 +48,12 @@ namespace Academy {
             episodes.Add(currentEpisode);
             currentEpisode = new Episode();
 
+            // print($"Length {episodes.Count}");
+            
             if (episodes.Count >= episodesInBatch) {
                 Debug.Log($"Epoch {epoch} completed. Average reward: {episodes.Average(e => e.rewards.Sum())}");
                 StartCoroutine(agent.Train(episodes));
-                episodes = new List<Episode>();
+                episodes = new List<Episode>(episodesInBatch);
                 epoch++;
             }
 

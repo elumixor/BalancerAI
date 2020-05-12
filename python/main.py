@@ -2,33 +2,15 @@ import socketserver
 import socket
 import struct
 
+import matplotlib
 import numpy as np
 import torch
 from torch.nn import Linear
 from torch.optim import Adam, SGD
+import matplotlib.pyplot as plt
 
-
-def list_to_bytes(float_list):
-    return struct.pack(f'<i', len(float_list)) + struct.pack(f'<{len(float_list)}f', *float_list)
-
-
-def tensor_to_bytes(tensor):
-    shape = list_to_bytes(list(tensor.shape))
-    data = list_to_bytes(list(tensor.flatten().tolist()))
-    return shape + data
-
-
-def list_from_bytes(bytes_list):
-    l = struct.unpack('<i', bytes_list[0:4])[0]
-    return struct.unpack(f'<{l}f', bytes_list[4:(4 + l * 4)])
-
-
-def tensor_from_bytes(bytes):
-    shape = [int(s) for s in list_from_bytes(bytes)]
-    offset = 4 + len(shape) * 4
-    data = list_from_bytes(bytes[offset:4 + offset + int(np.prod(shape)) * 4])
-
-    return torch.tensor(data).reshape(shape)
+from tcp.byte_ransformer import tensor_to_bytes
+from tcp.unity_handler import TorchTCPHandler, start_unity_handler
 
 
 def net_to_bytes(net):
@@ -52,109 +34,94 @@ def to_discounted(rewards):
 
 
 epoch = 1
+total_totals = []
 
 
-def train_net(states, actions, rewards):
-    global epoch
-    print(f'Starting training')
-    # print(states)
-
-    p0 = torch.sigmoid(net(states)).flatten()
-    p1 = 1 - p0
-
-    # print(p0)
-
-    out = torch.stack([p0, p1])
-    # print(f"stacked: \n {out}.\nshape {out.shape}")
-    out = out[actions.flatten().long(), range(len(actions))]
-    # print(f"selected: \n {out}.\nshape {out.shape}")
-    out = -torch.log(out) * rewards
-
-    # print(f'rewards: {rewards}')
-    # print(f'out: {out}')
-    # print(f'Calling backward()...')
-    # print(out)
-    # print(out.min())
-    # print(out.max())
-    out = out.mean()
-
-    optim.zero_grad()
-    # net.zero_grad()
-    out.backward()
-
-    # with torch.no_grad():
-    #     for p in net.parameters():
-    #         print(p.grad * 0.01)
-    #         p -= p.grad * 0.01
-    optim.step()
-
-    print(f'Epoch: {epoch}')
-    # print(list(net.parameters()))
-    epoch += 1
-
-
-class MyTCPHandler(socketserver.BaseRequestHandler):
-    def receive_vector(self):
-        size = struct.unpack('<i', self.request.recv(4))[0]
-        return list(struct.unpack(f'<{size}f', self.request.recv(size * 4)))
-
-    def receive_float(self):
-        return struct.unpack('<f', self.request.recv(4))[0]
-
-    def receive_int(self):
-        return struct.unpack('<i', self.request.recv(4))[0]
-
-    def receive_vector_array(self):
-        number_of_elements = struct.unpack('<i', self.request.recv(4))[0]
-        return [self.receive_vector() for _ in range(number_of_elements)]
-
+class RLHandler(TorchTCPHandler):
     def handle(self):
+        global epoch
+
         number_of_episodes = self.receive_int()
 
-        states = []
-        actions = []
-        rewards = []
         total = []
 
-        for ep in range(number_of_episodes):
-            states += self.receive_vector_array()
-            actions += self.receive_vector_array()
+        loss = torch.tensor(0., requires_grad=True)
 
-            r = self.receive_vector()
-            total.append(sum(r))
+        for episode in range(number_of_episodes):
+            states = self.receive_vector_array()
+            actions = self.receive_vector_array()
 
-            to_discounted(r)
+            rewards = self.receive_vector()
+            total.append(sum(rewards))
 
-            rewards += r
+            states = torch.tensor(states)
+            actions = torch.tensor(actions)
 
-        states = torch.tensor(states)
-        actions = torch.tensor(actions)
-        rewards = torch.tensor(rewards)
+            q_val = model.critic(states[-1])
+            q_values = [0 for _ in range(len(rewards))]
+            for i in reversed(range(len(rewards))):
+                q_val = q_values[i] = rewards[i] + discounting * q_val
 
-        print(f"rewards: mean total reward: {np.mean(total)}")
-        # print(rewards)
-        # print(rewards.mean())
-        # print(rewards.mean())
-        std = rewards.std()
+            rewards = torch.tensor(rewards)
 
-        rewards = (rewards - rewards.mean()) / std
+            # rewards = (rewards - rewards.mean()) / std
+            # print(f'Starting training')
 
-        if std > 0:
-            train_net(states, actions, rewards)
+            values, (p0, p1) = model.forward(states)
+            q_values = torch.tensor(q_values)
 
-        self.request.sendall(net_to_bytes(net))
+            advantage = q_values - values
+            # print(values)
+
+            out = torch.stack([p0, p1])
+            out = out[actions.flatten().long(), range(len(actions))]
+            actor_loss = (-torch.log(out) * advantage).mean()
+            critic_loss = .5 * advantage.pow(2).mean()
+            loss = loss + actor_loss + critic_loss
+
+        optim.zero_grad()
+        # actor_loss.backward()
+        loss.backward()
+        # for p in model.parameters():
+        #     print(f'{p} {p.grad}')
+
+        optim.step()
+
+        print(f"Epoch: {epoch} mean total reward: {np.mean(total)}")
+        total_totals.append(np.mean(total))
+        # if len(total_totals) % 10 == 0:
+        #     plt.plot(total_totals)
+        #     plt.draw()
+        #     plt.pause(0.0001)
+        #     plt.clf()
+
+        epoch += 1
+
+        self.request.sendall(net_to_bytes(model.actor))
+
+
+class A2C(torch.nn.Module):
+    def __init__(self, obs_size, num_actions):
+        super().__init__()
+
+        self.num_actions = num_actions
+        self.critic = Linear(obs_size, 1)
+        self.actor = Linear(obs_size, 1)
+
+    def forward(self, obs):
+        action = self.actor(obs)
+        value = self.critic(obs).flatten()
+
+        p0 = action.flatten().sigmoid()
+        p1 = 1 - p0
+
+        return value, (p0, p1)
 
 
 if __name__ == "__main__":
-    HOST, PORT = socket.gethostname(), 11000
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-    net = Linear(1, 1)
-    # net.to(device)
-    optim = SGD(net.parameters(), lr=0.01, momentum=0.9)
-
-    server = socketserver.TCPServer((HOST, PORT), MyTCPHandler)
-
-    print("Server started")
-
-    server.serve_forever()
+    model = A2C(1, 2)
+    optim = SGD(model.parameters(), lr=0.001, momentum=0.8)
+    # optim = Adam(model.parameters(), lr=0.01)
+    # matplotlib.use("TkAgg")
+    # plt.ion()
+    start_unity_handler(RLHandler)

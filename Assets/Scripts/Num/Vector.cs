@@ -1,15 +1,17 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using NN;
+using Communication;
 using UnityEngine;
+using R = Num.Random;
 
 namespace Num {
-    public readonly struct Vector : IEnumerable<float> {
-        private readonly float[] elements;
+    public readonly struct Vector : IEnumerable<float>, IToBytes {
+        public readonly float[] elements;
         public readonly int size;
 
-        public Vector(float[] elements) {
+        public Vector(params float[] elements) {
             this.elements = elements;
             size = elements.Length;
         }
@@ -20,6 +22,7 @@ namespace Num {
         }
 
         public static implicit operator Vector(float[] elements) => new Vector(elements);
+        public static explicit operator Vector(float element) => new[] {element};
 
         public float this[int i] => elements[i];
         public IEnumerator<float> GetEnumerator() => ((IEnumerable<float>) elements).GetEnumerator();
@@ -34,9 +37,8 @@ namespace Num {
         }
 
         public static Vector Random(int size, float min = 0f, float max = 1f) {
-            var r = new System.Random();
             var e = new float[size];
-            for (var i = 0; i < size; i++) e[i] = (float) (r.NextDouble() * (max - min) + min);
+            for (var i = 0; i < size; i++) e[i] = R.Range(min, max);
             return e;
         }
 
@@ -56,6 +58,15 @@ namespace Num {
         public static Vector operator +(float a, Vector x) {
             var res = new float[x.size];
             for (var i = 0; i < x.size; i++) res[i] = x[i] + a;
+
+            return res;
+        }
+
+        public static Vector operator *(Vector a, Vector b) {
+            CheckSize(a, b);
+
+            var res = new float[a.size];
+            for (var i = 0; i < a.size; i++) res[i] = a[i] * b[i];
 
             return res;
         }
@@ -84,7 +95,7 @@ namespace Num {
         public float Dot(Vector b) {
             CheckSize(this, b);
             var s = 0f;
-            for (var i = 0; i < size; i++) s += elements[i] + b[i];
+            for (var i = 0; i < size; i++) s += elements[i] * b[i];
 
             return s;
         }
@@ -96,7 +107,6 @@ namespace Num {
                 res[i, j] = elements[i] * b[j];
             return res;
         }
-
 
         public float Mean => elements.Average();
 
@@ -112,7 +122,30 @@ namespace Num {
                 return Mathf.Sqrt(r / (size - 1));
             }
         }
+        public byte[] ToBytes() {
+            var byteArray = new byte[sizeof(int) + size * sizeof(float)];
+            Buffer.BlockCopy(new[] {size}, 0, byteArray, 0, sizeof(int));
+            Buffer.BlockCopy(elements, 0, byteArray, sizeof(int), byteArray.Length - sizeof(int));
+            return byteArray;
+        }
 
-        public Vector Normalize() => (this - Mean) / STD;
+        public override string ToString() {
+            return $"[{string.Join(", ", elements.Select(e => e.ToString("##.##")))}]";
+        }
+    }
+
+    public static class VectorExtensions {
+        public static Vector Normalize(this Vector x) => (x - x.Mean) / x.STD;
+
+        public static Vector Map(this Vector x, Func<float, float> mapper) {
+            var r = new float[x.size];
+            for (var i = 0; i < x.size; i++) r[i] = mapper(x[i]);
+            return r;
+        }
+
+        public static Vector Max(this Vector x, float v) => x.Map(el => el < v ? el : v);
+        public static Vector Min(this Vector x, float v) => x.Map(el => el > v ? el : v);
+        public static Vector Clamp(this Vector x, float min = 0f, float max = 1f) => x.Max(min).Min(max);
+        public static Vector Sigmoid(this Vector x) => x.Map(F.Sigmoid);
     }
 }

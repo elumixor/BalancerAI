@@ -288,7 +288,7 @@ GameObject:
   - component: {fileID: 71361648}
   - component: {fileID: 71361647}
   m_Layer: 0
-  m_Name: Environment
+  m_Name: Academy
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -306,19 +306,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0529d1bfcd947cab0d6b0f65fed1ed2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  environment: {fileID: 0}
   agent: {fileID: 1330792338}
+  maxSamplesInEpisode: 100
+  episodesInBatch: 10
+  maximumEpochs: 1000
   probabilityVisualizer: {fileID: 1235727720}
   valueVisualizer: {fileID: 1197080699}
-  travelDistance: 0.1
-  bigReward: 10
-  smallReward: 1
-  stepReward: -0.1
-  automatic: 1
-  maxEpisodes: 1000
-  maxSamples: 1000
-  episodesBatchSize: 5
   scoreText: {fileID: 526573653}
-  timeScale: 1
+  timeScale: 25
 --- !u!4 &71361648
 Transform:
   m_ObjectHideFlags: 0
@@ -1717,9 +1713,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 1330792332}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 75f022a3b1f14270857e475ed92fcc67, type: 3}
+  m_Script: {fileID: 11500000, guid: baca1bde1948427bb740b68b41599c36, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  reactionTime: 0.01
+  useHeuristic: 0
+  travelDistance: 1
+  bigReward: 10
+  smallReward: 1
+  stepReward: -0.1
 --- !u!1 &1461961926
 GameObject:
   m_ObjectHideFlags: 0

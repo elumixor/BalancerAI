@@ -1,7 +1,7 @@
 ﻿using TMPro;
 using UnityEngine;
 
-namespace Basic {
+namespace Basic.Stats {
     public class VisualizerBar : MonoBehaviour
     {
         [SerializeField] private TextMeshProUGUI text;

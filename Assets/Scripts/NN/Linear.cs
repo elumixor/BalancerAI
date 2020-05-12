@@ -1,16 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using Communication;
 using Num;
-using UnityEngine;
 
 namespace NN {
     public class Linear : Module {
         private readonly int inFeatures;
         private readonly int outFeatures;
 
-        private Matrix w;
-        private Vector b;
-
-        private Vector x;
+        public Matrix w;
+        public Vector b;
 
         private Matrix dw;
         private Vector db;
@@ -21,19 +18,30 @@ namespace NN {
 
             w = Matrix.Random((outFeatures, inFeatures), -1f, 1f);
             b = Vector.Random(outFeatures, -1f, 1f);
+
+            db = Vector.Zeros(outFeatures);
+            dw = Matrix.Zeros((outFeatures, inFeatures));
         }
 
         public override Vector Forward(Vector x) {
-            this.x = x;
             return w.Dot(x) + b;
         }
 
-        public override Vector Backward(Vector dy) {
-            db = dy;
-            dw = dy.Outer(x);
+        protected override Vector Backward(Vector dy, Vector x) {
+            db += dy;
+            dw += dy.Outer(x);
             return w.T.Dot(dy);
         }
-        
-        protected List<Parameter> Parameters => new List<Parameter> { w, b };
+
+        public override Vector[] Backward(Vector[] dy) {
+            db = Vector.Zeros(outFeatures);
+            dw = Matrix.Zeros((outFeatures, inFeatures));
+            return base.Backward(dy);
+        }
+
+        public override void FromBytes(byte[] bytes, int offset, out int newOffset) {
+            w = bytes.ToMatrix(offset, out newOffset);
+            b = bytes.ToVector(newOffset, out newOffset);
+        }
     }
 }

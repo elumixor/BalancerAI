@@ -1,6 +1,4 @@
-﻿using Num;
-
-namespace Basic {
+﻿namespace Basic {
     // public class NN {
     //     public Vector probabilities() => F
     // }

@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using R = Num.Random;
 
 namespace Num {
     public readonly struct Matrix : IEnumerable<float> {
-        private readonly float[,] elements;
+        public readonly float[,] elements;
         public readonly int height;
         public readonly int width;
         public int Size { get; }
@@ -52,6 +54,20 @@ namespace Num {
             return res;
         }
 
+        public IEnumerable<Vector> Rows {
+            get {
+                for (var i = 0; i < height; i++)
+                    yield return Row(i);
+            }
+        }
+
+        public IEnumerable<Vector> Columns {
+            get {
+                for (var j = 0; j < width; j++)
+                    yield return Column(j);
+            }
+        }
+
         public static Matrix Zeros((int height, int width) shape) => new float[shape.height, shape.width];
 
         public static Matrix Ones((int height, int width) shape) {
@@ -68,11 +84,10 @@ namespace Num {
         public static Matrix Random((int height, int width) shape, float min = 0f, float max = 1f) {
             var (height, width) = shape;
 
-            var r = new Random();
             var e = new float[height, width];
             for (var i = 0; i < height; i++)
             for (var j = 0; j < width; j++)
-                e[i, j] = (float) (r.NextDouble() * (max - min) + min);
+                e[i, j] = R.Range(min, max);
 
             return e;
         }
@@ -163,6 +178,10 @@ namespace Num {
                 res[i] = Row(i).Dot(v);
 
             return res;
+        }
+
+        public override string ToString() {
+            return $"[{string.Join("\n ", Rows.Select(r => r.ToString()))}]";
         }
     }
 }

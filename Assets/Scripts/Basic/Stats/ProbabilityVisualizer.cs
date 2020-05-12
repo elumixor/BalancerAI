@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace Basic {
+namespace Basic.Stats {
     public class ProbabilityVisualizer : MonoBehaviour {
         [SerializeField] private VisualizerBar p0;
         [SerializeField] private VisualizerBar p1;
